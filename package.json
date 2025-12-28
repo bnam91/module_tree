@@ -1,0 +1,12 @@
+{
+  "name": "module_tree",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node tree/tree_scripts.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.9.0"
+  }
+}
+
