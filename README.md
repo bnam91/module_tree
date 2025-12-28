@@ -3,7 +3,45 @@
 간단한 디렉터리 트리 뷰어/서버 도구. 프로젝트를 서브모듈로 포함해 실행 디렉터리 기준으로 트리를 생성하고 브라우저에서 확인합니다.
 
 ## 버전
-- `1.0.0`
+- `1.0.1`
+
+## 서브모듈 사용법
+
+### 1. 서브모듈 추가
+```bash
+git submodule add https://github.com/bnam91/module_tree.git submodules/module_tree
+```
+
+### 2. 의존성 설치
+```bash
+cd submodules/module_tree
+npm install
+```
+
+### 3. 실행
+프로젝트 루트에서 실행:
+```bash
+node submodules/module_tree/tree/tree_scripts.js
+```
+
+또는 직접 실행:
+```bash
+node submodules/module_tree/tree/tree.js
+```
+
+### 4. 설정
+- 기본 설정은 `tree/config.js`에 있습니다.
+- MongoDB URI는 환경변수 `MONGODB_URI`로 우선 설정 가능합니다.
+- 환경변수가 없으면 `config.js`의 기본값을 사용합니다.
+
+### 서브모듈 업데이트
+```bash
+cd submodules/module_tree
+git pull origin main
+cd ../..
+git add submodules/module_tree
+git commit -m "Update module_tree submodule"
+```
 
 ## 디렉터리 구조(요약)
 - `tree/` : 실행 스크립트와 서버 코드

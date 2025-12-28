@@ -12,7 +12,8 @@ module.exports = {
 
   // MongoDB 연결 설정 (환경변수로 우선 설정 가능)
   mongo: {
-    uri: '', // 예: mongodb+srv://user:pass@cluster0.example.mongodb.net/?retryWrites=true&w=majority
+    // 기본값을 코드에 직접 명시했습니다. 환경변수가 있으면 그것이 우선합니다.
+    uri: 'mongodb+srv://coq3820:JmbIOcaEOrvkpQo1@cluster0.qj1ty.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
     dbName: 'modules_DB',
     collectionName: 'tree',
     requireMongo: true, // true면 Mongo 연결 실패 시 폴백 없이 에러 (기본값: MongoDB만 사용)
