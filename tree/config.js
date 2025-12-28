@@ -15,7 +15,7 @@ module.exports = {
     uri: '', // 예: mongodb+srv://user:pass@cluster0.example.mongodb.net/?retryWrites=true&w=majority
     dbName: 'modules_DB',
     collectionName: 'tree',
-    requireMongo: false, // true면 Mongo 연결 실패 시 폴백 없이 에러
+    requireMongo: true, // true면 Mongo 연결 실패 시 폴백 없이 에러 (기본값: MongoDB만 사용)
   },
 
   // 트리 생성 시 제외할 항목

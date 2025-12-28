@@ -31,9 +31,10 @@ function startServer(html, options) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(state));
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('[ERROR] 상태 로드 실패:', err);
           res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: 'failed to load state' }));
+          res.end(JSON.stringify({ error: 'failed to load state', message: err.message }));
         });
       return;
     }
@@ -46,6 +47,7 @@ function startServer(html, options) {
         try {
           parsed = JSON.parse(body || '{}');
         } catch (e) {
+          console.error('[ERROR] JSON 파싱 실패:', e);
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ error: 'invalid JSON' }));
           return;
@@ -57,9 +59,10 @@ function startServer(html, options) {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ ok: true }));
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error('[ERROR] 상태 저장 실패:', err);
             res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'failed to save state' }));
+            res.end(JSON.stringify({ error: 'failed to save state', message: err.message }));
           });
       });
       return;

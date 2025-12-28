@@ -63,7 +63,17 @@ async function createMongoStore({ projectName, uri, dbName, collectionName }) {
     socketTimeoutMS: 60_000,
   });
 
-  await client.connect();
+  try {
+    await client.connect();
+    // 연결 확인
+    await client.db('admin').command({ ping: 1 });
+    console.log('[INFO] MongoDB 연결 성공');
+  } catch (err) {
+    console.error('[ERROR] MongoDB 연결 실패:', err.message);
+    await client.close();
+    throw err;
+  }
+  
   const collection = client.db(dbName).collection(collectionName);
 
   return {
@@ -73,12 +83,22 @@ async function createMongoStore({ projectName, uri, dbName, collectionName }) {
       return normalizeState(doc && doc.state);
     },
     async save(state) {
-      const normalized = normalizeState(state);
-      await collection.updateOne(
-        { project: projectName },
-        { $set: { project: projectName, state: normalized, updatedAt: new Date() } },
-        { upsert: true }
-      );
+      try {
+        const normalized = normalizeState(state);
+        const result = await collection.updateOne(
+          { project: projectName },
+          { $set: { project: projectName, state: normalized, updatedAt: new Date() } },
+          { upsert: true }
+        );
+        if (result.upsertedCount > 0) {
+          console.log(`[INFO] MongoDB: 새 프로젝트 상태 생성 (project=${projectName})`);
+        } else if (result.modifiedCount > 0) {
+          console.log(`[INFO] MongoDB: 프로젝트 상태 업데이트 (project=${projectName})`);
+        }
+      } catch (err) {
+        console.error(`[ERROR] MongoDB 저장 실패 (project=${projectName}):`, err.message);
+        throw err;
+      }
     },
     async close() {
       await client.close();
@@ -106,10 +126,14 @@ async function createStateStore({
   if (uri) {
     try {
       const mongoStore = await createMongoStore({ projectName, uri, dbName, collectionName });
-      console.log('[INFO] MongoDB 상태 저장소를 사용합니다.');
+      console.log(`[INFO] MongoDB 상태 저장소를 사용합니다. (db=${dbName}, collection=${collectionName}, project=${projectName})`);
       return mongoStore;
     } catch (err) {
-      console.warn('[WARN] MongoDB 연결 실패, 로컬 파일 상태 저장소로 대체합니다.', err.message);
+      console.error('[ERROR] MongoDB 연결 실패:', err.message);
+      if (requireMongo) {
+        throw err;
+      }
+      console.warn('[WARN] 로컬 파일 상태 저장소로 대체합니다.');
     }
   }
 

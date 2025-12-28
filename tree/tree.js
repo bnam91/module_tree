@@ -13,11 +13,11 @@ const { createStateStore } = require('./utils/state');
 const { createHtml } = require('./utils/html');
 const { startServer } = require('./utils/server');
 
-// 트리를 시작할 루트: 환경변수 > config > 기본(현재 폴더 상위)
+// 트리를 시작할 루트: 환경변수 > config > 기본(현재 작업 디렉터리)
 const ROOT_DIR =
   process.env.TREE_PROJECT_ROOT ||
   config.projectRoot ||
-  path.resolve(__dirname, '..');
+  process.cwd(); // 현재 작업 디렉터리를 기본값으로 사용
 const OUTPUT_HTML = path.join(__dirname, 'tree.html');
 
 // 지나치게 큰/불필요한 항목을 기본적으로 제외
