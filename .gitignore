@@ -1,4 +1,5 @@
 node_modules/
 tree/state/
+tree/tree.html
 .DS_Store
 *.DS_Store
