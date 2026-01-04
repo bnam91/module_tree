@@ -12,6 +12,8 @@ function getDefaultState() {
     expandedPaths: [],
     noteContent: '',
     noteVisible: false,
+    pathNotes: {},
+    labelNotes: {},
   };
 }
 
@@ -28,6 +30,8 @@ function normalizeState(raw) {
     expandedPaths: Array.isArray(safe.expandedPaths) ? safe.expandedPaths : [],
     noteContent: typeof safe.noteContent === 'string' ? safe.noteContent : '',
     noteVisible: !!safe.noteVisible,
+    pathNotes: typeof safe.pathNotes === 'object' && safe.pathNotes !== null ? safe.pathNotes : {},
+    labelNotes: typeof safe.labelNotes === 'object' && safe.labelNotes !== null ? safe.labelNotes : {},
   };
 }
 

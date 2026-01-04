@@ -42,6 +42,7 @@ function renderLabelApply() {
           <option value="">선택</option>
         </select>
         <span class="apply-swatch" id="apply-label-swatch" title="라벨 색상"></span>
+        <button id="label-note-btn" class="label-note-btn" title="라벨 메모">💬</button>
         <span class="hint">⌥+클릭으로 토글 적용</span>
       </div>
   `;

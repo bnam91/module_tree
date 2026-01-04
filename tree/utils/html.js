@@ -64,6 +64,10 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
     let treeSnapshot = JSON.stringify(treeData);
     let noteContent = initialState.noteContent || '';
     let noteVisible = !!initialState.noteVisible;
+    let pathNotes = initialState.pathNotes || {};
+    let labelNotes = initialState.labelNotes || {};
+    let currentNotePath = null;
+    let currentNoteLabelId = null;
     const rootDir = ${JSON.stringify(rootDir)};
     const normalizeRelPath = (relPath) => (relPath || '').replace(/^\\/+|\\/+$/g, '');
     let selectedRelPath = '';
@@ -76,6 +80,8 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
     let filterDropdownOpen = false;
     const notePanelEl = document.getElementById('note-panel');
     const noteTextEl = document.getElementById('note-text');
+    const notePathEl = document.getElementById('note-path');
+    const noteHeaderTextEl = document.getElementById('note-header-text');
 
     function getFilterTargets() {
       return Array.from(selectedFilterIds);
@@ -179,15 +185,59 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
     }
 
     function loadNoteState() {
-      if (noteTextEl) noteTextEl.value = noteContent || '';
+      if (noteTextEl) {
+        if (currentNotePath !== null) {
+          noteTextEl.value = pathNotes[currentNotePath] || '';
+        } else if (currentNoteLabelId !== null) {
+          noteTextEl.value = labelNotes[currentNoteLabelId] || '';
+        } else {
+          noteTextEl.value = noteContent || '';
+        }
+      }
+      updateNotePanelHeader();
       document.body.classList.toggle('show-notes', noteVisible);
       const btn = document.getElementById('toggle-notes');
       if (btn) btn.textContent = noteVisible ? '메모장 숨기기' : '메모장 보기';
     }
 
+    function updateNotePanelHeader() {
+      if (!noteHeaderTextEl || !notePathEl) return;
+      if (currentNotePath !== null) {
+        noteHeaderTextEl.textContent = '경로별 메모';
+        notePathEl.textContent = buildFullPath(currentNotePath);
+        notePathEl.style.display = 'block';
+      } else if (currentNoteLabelId !== null) {
+        const lab = labels.find(l => l.id === currentNoteLabelId);
+        noteHeaderTextEl.textContent = '라벨별 메모';
+        notePathEl.textContent = lab ? '라벨: ' + lab.name : '';
+        notePathEl.style.display = 'block';
+      } else {
+        noteHeaderTextEl.textContent = '메모';
+        notePathEl.style.display = 'none';
+      }
+    }
+
     function saveNoteContent() {
       if (!noteTextEl) return;
-      noteContent = noteTextEl.value || '';
+      if (currentNotePath !== null) {
+        const content = noteTextEl.value || '';
+        if (content.trim()) {
+          pathNotes[currentNotePath] = content;
+        } else {
+          delete pathNotes[currentNotePath];
+        }
+        refreshNoteIcons();
+      } else if (currentNoteLabelId !== null) {
+        const content = noteTextEl.value || '';
+        if (content.trim()) {
+          labelNotes[currentNoteLabelId] = content;
+        } else {
+          delete labelNotes[currentNoteLabelId];
+        }
+        refreshNoteIcons();
+      } else {
+        noteContent = noteTextEl.value || '';
+      }
       scheduleSaveState();
     }
 
@@ -197,6 +247,40 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
       const btn = document.getElementById('toggle-notes');
       if (btn) btn.textContent = noteVisible ? '메모장 숨기기' : '메모장 보기';
       scheduleSaveState();
+    }
+
+    function openNoteForPath(relPath) {
+      currentNotePath = relPath ? normalizeRelPath(relPath) : null;
+      currentNoteLabelId = null;
+      loadNoteState();
+      if (!noteVisible) {
+        setNoteVisibility(true);
+      }
+      if (noteTextEl) {
+        noteTextEl.focus();
+      }
+    }
+
+    function openNoteForLabel(labelId) {
+      currentNoteLabelId = labelId || null;
+      currentNotePath = null;
+      loadNoteState();
+      if (!noteVisible) {
+        setNoteVisibility(true);
+      }
+      if (noteTextEl) {
+        noteTextEl.focus();
+      }
+    }
+
+    function refreshNoteIcons() {
+      document.querySelectorAll('.note-icon').forEach((icon) => {
+        const li = icon.closest('li.node');
+        if (!li) return;
+        const relPath = normalizeRelPath(li.dataset.relPath);
+        const hasPathNote = pathNotes[relPath] && pathNotes[relPath].trim();
+        icon.style.display = hasPathNote ? 'inline-block' : 'none';
+      });
     }
 
     function updateFilterTriggerText() {
@@ -319,6 +403,9 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
         expandedPaths = new Set(json.expandedPaths || []);
         noteContent = json.noteContent || '';
         noteVisible = !!json.noteVisible;
+        pathNotes = json.pathNotes || {};
+        labelNotes = json.labelNotes || {};
+        refreshNoteIcons();
       } catch (e) {
         console.warn('상태 로드 실패, 초기 상태를 사용합니다.', e);
       }
@@ -337,6 +424,8 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
           expandedPaths: Array.from(expandedPaths),
           noteContent,
           noteVisible,
+          pathNotes,
+          labelNotes,
         };
         fetch('/state', {
           method: 'POST',
@@ -427,9 +516,21 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
       hideBox.className = 'hide-checkbox';
       hideBox.title = '숨기기';
 
+      const noteIcon = document.createElement('span');
+      noteIcon.className = 'note-icon';
+      noteIcon.textContent = '💬';
+      noteIcon.title = '메모 보기/편집';
+      const hasPathNote = pathNotes[normalizedRel] && pathNotes[normalizedRel].trim();
+      noteIcon.style.display = hasPathNote ? 'inline-block' : 'none';
+      noteIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openNoteForPath(normalizedRel);
+      });
+
       label.appendChild(caret);
       label.appendChild(icon);
       label.appendChild(name);
+      label.appendChild(noteIcon);
       label.appendChild(hideBox);
       li.appendChild(label);
 
@@ -493,6 +594,58 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
         scheduleSaveState();
       });
 
+      label.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const menu = document.getElementById('context-menu');
+        if (menu) menu.remove();
+        
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'context-menu';
+        contextMenu.className = 'context-menu';
+        contextMenu.style.left = e.clientX + 'px';
+        contextMenu.style.top = e.clientY + 'px';
+        
+        // 경로별 메모
+        const pathMenuItem = document.createElement('div');
+        pathMenuItem.className = 'context-menu-item';
+        pathMenuItem.textContent = pathNotes[normalizedRel] && pathNotes[normalizedRel].trim() ? '경로 메모 편집' : '경로 메모 추가';
+        pathMenuItem.addEventListener('click', () => {
+          openNoteForPath(normalizedRel);
+          contextMenu.remove();
+        });
+        contextMenu.appendChild(pathMenuItem);
+        
+        // 라벨별 메모 (해당 경로에 적용된 라벨들)
+        const pathLabels = getLabelsForPath(normalizedRel);
+        if (pathLabels.length > 0) {
+          const separator = document.createElement('div');
+          separator.className = 'context-menu-separator';
+          contextMenu.appendChild(separator);
+          
+          pathLabels.forEach((lab) => {
+            const labelMenuItem = document.createElement('div');
+            labelMenuItem.className = 'context-menu-item';
+            labelMenuItem.textContent = (labelNotes[lab.id] && labelNotes[lab.id].trim() ? '라벨 메모 편집: ' : '라벨 메모 추가: ') + lab.name;
+            labelMenuItem.addEventListener('click', () => {
+              openNoteForLabel(lab.id);
+              contextMenu.remove();
+            });
+            contextMenu.appendChild(labelMenuItem);
+          });
+        }
+        
+        document.body.appendChild(contextMenu);
+        
+        const closeMenu = (e) => {
+          if (!contextMenu.contains(e.target)) {
+            contextMenu.remove();
+            document.removeEventListener('click', closeMenu);
+          }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
+      });
+
       return li;
     }
 
@@ -507,6 +660,7 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
 
       container.appendChild(rootList);
       applyExpandedState();
+      refreshNoteIcons();
     }
 
     function rerenderTree() {
@@ -515,6 +669,7 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
       if (treeData) {
         renderTree(treeData);
         refreshAllLabelDots();
+        refreshNoteIcons();
         applyExpandedState();
         applyHiddenState();
         applyFilter();
@@ -672,11 +827,18 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
         );
 
         // 선택 상태 정리
-        if (currentApplyLabel === target) currentApplyLabel = '';
+        if (currentApplyLabel === target) {
+          currentApplyLabel = '';
+          if (labelNoteBtn) updateLabelNoteButton();
+        }
         selectedFilterIds.delete(target);
+        
+        // 라벨 메모 삭제
+        delete labelNotes[target];
 
         populateLabelSelects();
         refreshAllLabelDots();
+        refreshNoteIcons();
         applyFilter();
         scheduleSaveState();
       };
@@ -686,10 +848,31 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
       if (deleteBtn) {
         deleteBtn.addEventListener('click', deleteLabel);
       }
+      const labelNoteBtn = document.getElementById('label-note-btn');
+      const updateLabelNoteButton = () => {
+        if (!labelNoteBtn) return;
+        const hasNote = currentApplyLabel && labelNotes[currentApplyLabel] && labelNotes[currentApplyLabel].trim();
+        labelNoteBtn.style.opacity = hasNote ? '1' : '0.5';
+        labelNoteBtn.title = currentApplyLabel ? (hasNote ? '라벨 메모 편집' : '라벨 메모 추가') : '라벨을 선택하세요';
+        labelNoteBtn.disabled = !currentApplyLabel;
+      };
+      
       applySelect.addEventListener('change', () => {
         currentApplyLabel = applySelect.value;
         updateApplySwatch();
+        updateLabelNoteButton();
       });
+      
+      if (labelNoteBtn) {
+        labelNoteBtn.addEventListener('click', () => {
+          if (!currentApplyLabel) {
+            alert('먼저 라벨을 선택하세요.');
+            return;
+          }
+          openNoteForLabel(currentApplyLabel);
+        });
+        updateLabelNoteButton();
+      }
       if (colorPresetSelect && colorInput) {
         const syncCustom = () => {
           if (colorPresetSelect.value === 'custom') {
@@ -722,8 +905,20 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
       if (noteBtn) {
         noteBtn.addEventListener('click', () => {
           const next = !document.body.classList.contains('show-notes');
+          if (next && currentNotePath === null && currentNoteLabelId === null && !noteVisible) {
+            currentNotePath = null;
+            currentNoteLabelId = null;
+            loadNoteState();
+          }
           setNoteVisibility(next);
           if (!next) saveNoteContent();
+        });
+      }
+      const noteCloseBtn = document.getElementById('note-close');
+      if (noteCloseBtn) {
+        noteCloseBtn.addEventListener('click', () => {
+          saveNoteContent();
+          setNoteVisibility(false);
         });
       }
       updateApplySwatch();
@@ -808,6 +1003,7 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
     renderTree(treeData);
     populateLabelSelects();
     refreshAllLabelDots();
+    refreshNoteIcons();
     applyHiddenState();
     initCheckboxHotkey();
     initLabelControls();
@@ -862,6 +1058,7 @@ function createHtml({ treeData, initialState, rootDir, folderIconDataUri }) {
     loadStateFromServer().then(() => {
       populateLabelSelects();
       refreshAllLabelDots();
+      refreshNoteIcons();
       applyHiddenState();
       applyFilter();
       updateApplySwatch();
